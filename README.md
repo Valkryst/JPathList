@@ -1,3 +1,6 @@
+[![Java CI with Maven](https://github.com/Valkryst/JPathList/actions/workflows/maven.yml/badge.svg)](https://github.com/Valkryst/JPathList/actions/workflows/maven.yml)
+[![CodeQL](https://github.com/Valkryst/JPathList/actions/workflows/codeql.yml/badge.svg)](https://github.com/Valkryst/JPathList/actions/workflows/codeql.yml)
+
 `JPathList` is a Java Swing component designed to display a list of _unique_ directory and/or file paths. Additionally,
 it supports drag-and-drop functionality, allowing users to drag files and directories from their file system into the
 list.
