@@ -36,7 +36,7 @@ Add JPathList as a dependency.
 
 ```
 dependencies {
-	implementation 'com.github.Valkryst:JPathList:2023.9.21'
+	implementation 'com.github.Valkryst:JPathList:2023.9.23'
 }
 ```
 
@@ -58,7 +58,7 @@ Add JPathList as a dependency.
 <dependency>
     <groupId>com.github.Valkryst</groupId>
     <artifactId>JPathList</artifactId>
-    <version>2023.9.21</version>
+    <version>2023.9.23</version>
 </dependency>
 ```
 
@@ -73,7 +73,7 @@ resolvers += "jitpack" at "https://jitpack.io"
 Add JPathList as a dependency.
 
 ```
-libraryDependencies += "com.github.Valkryst" % "JPathList" % "2023.9.21"
+libraryDependencies += "com.github.Valkryst" % "JPathList" % "2023.9.23"
 ```
 
 ## Example
