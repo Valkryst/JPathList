@@ -1,6 +1,6 @@
+package com.valkryst.JPathList;
+
 import com.google.common.jimfs.Jimfs;
-import com.valkryst.JPathList.JPathList;
-import com.valkryst.JPathList.RecursionMode;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
