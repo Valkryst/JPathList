@@ -9,6 +9,7 @@ list.
     * [Maven](https://github.com/Valkryst/JPathList#-maven)
     * [sbt](https://github.com/Valkryst/JPathList#-scala-sbt)
 * [Example](https://github.com/Valkryst/JPathList#example)
+* [Supported Recursion Modes](https://github.com/Valkryst/JPathList/blob/master/src/main/java/com/valkryst/JPathList/RecursionMode.java)
 
 ## Installation
 
