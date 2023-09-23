@@ -9,6 +9,9 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - name: Setup XVFB
+        run: sudo apt-get -qq update; sudo apt-get -qq install xvfb
+
       # https://github.com/marketplace/actions/setup-java-jdk
       - name: Setup JDK
         uses: actions/setup-java@v1
@@ -27,4 +30,4 @@ jobs:
       - name: Build with Maven
         env:
           DISPLAY: :1
-        run: mvn --batch-mode --update-snapshots -Dmaven.javadoc.skip=true verify --file pom.xml
+        run: xvfb-run --server-args="-screen 0 1920x1080x24" mvn --batch-mode --update-snapshots -Dmaven.javadoc.skip=true verify --file pom.xml
