@@ -85,8 +85,8 @@ added to it, so you can immediately test the drag-and-drop functionality.
 public class Driver {
     public static void main(final String[] args) {
         SwingUtilities.invokeLater(() -> {
-            final var fileList = new com.valkryst.JPathList.JPathList();
-            fileList.setRecursionMode(com.valkryst.JPathList.RecursionMode.FILES_AND_DIRECTORIES);
+            final var fileList = new JPathList();
+            fileList.setRecursionMode(RecursionMode.FILES_AND_DIRECTORIES);
 
             final var frame = new JFrame("JPathList Example");
             frame.getContentPane().add(new JScrollPane(fileList));
