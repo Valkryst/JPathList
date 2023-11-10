@@ -14,9 +14,45 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class JPathListTest {
+    /**
+     * Creates a new {@link JPathList}.
+     *
+     * @return The new list.
+     */
+    public JPathList createPathList() {
+        final var list = new JPathList();
+        list.getAncestorListeners()[0].ancestorAdded(null); // This is a hack to start the addition service.
+        return list;
+    }
+
+    /**
+     * Attempts to retrieve the length of a {@link JPathList}, waiting up to 2 seconds for the list to update.
+     *
+     * @param list The list.
+     * @param length The expected length of the list.
+     *
+     * @return Length of the list.
+     */
+    public int getPathListLength(final JPathList list, final int length) {
+        for (int i = 0 ; i < 20 ; i++) {
+            if (list.getPaths().size() == length) {
+                return length;
+            }
+
+            try {
+                Thread.sleep(100);
+            } catch (final InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+
+        return list.getPaths().size();
+    }
+
+
     @Test
     public void canCreateJPathList() {
-        final var list = new JPathList();
+        final var list = createPathList();
         Assertions.assertEquals(0, list.getPaths().size());
         Assertions.assertTrue(list.isDragAndDropEnabled());
         Assertions.assertEquals(-1, list.getRecursionMode());
@@ -24,7 +60,7 @@ public class JPathListTest {
 
     @Test
     public void cannotAddPathWhenPathIsNull() {
-        final var list = new JPathList();
+        final var list = createPathList();
         Assertions.assertThrows(NullPointerException.class, () -> {
             list.addPath(null);
         });
@@ -32,7 +68,7 @@ public class JPathListTest {
 
     @Test
     public void cannotAddPathWhenPathDoesNotExist() {
-        final var list = new JPathList();
+        final var list = createPathList();
         Assertions.assertThrows(FileNotFoundException.class, () -> {
             list.addPath(Paths.get("test"));
         });
@@ -45,17 +81,16 @@ public class JPathListTest {
 
     @Test
     public void canAddRegularFilePath() throws IOException {
-        final var fileSystem = Jimfs.newFileSystem();
-        final var path = fileSystem.getPath("test");
-        Files.createFile(path);
+        try (final var fileSystem = Jimfs.newFileSystem()) {
+            final var path = fileSystem.getPath("test");
+            Files.createFile(path);
 
-        final var list = new JPathList();
-        list.addPath(path);
+            final var list = createPathList();
+            list.addPath(path);
 
-        Assertions.assertEquals(1, list.getPaths().size());
-        Assertions.assertEquals(path, list.getPaths().get(0));
-
-        fileSystem.close();
+            Assertions.assertEquals(1, getPathListLength(list, 1));
+            Assertions.assertEquals(path, list.getPaths().get(0));
+        }
     }
 
     @Test
@@ -66,101 +101,102 @@ public class JPathListTest {
 
     @Test
     public void canAddDirectoryPathWhenRecursionModeIsNone() throws IOException {
-        final var fileSystem = Jimfs.newFileSystem();
-        final var path = fileSystem.getPath("test");
-        Files.createDirectory(path);
+        try (final var fileSystem = Jimfs.newFileSystem()) {
+            final var path = fileSystem.getPath("test");
+            Files.createDirectory(path);
 
-        final var list = new JPathList();
-        list.addPath(path);
+            final var list = createPathList();
+            list.addPath(path);
 
-        Assertions.assertEquals(1, list.getPaths().size());
-        Assertions.assertEquals(path, list.getPaths().get(0));
+            Assertions.assertEquals(1, getPathListLength(list, 1));
+            Assertions.assertEquals(path, list.getPaths().get(0));
+        }
     }
 
     @Test
     public void canAddDirectoryPathWhenRecursionModeIsFilesOnly() throws IOException {
-        final var fileSystem = Jimfs.newFileSystem();
+        try (final var fileSystem = Jimfs.newFileSystem()) {
+            final var directoryA = fileSystem.getPath("directoryA");
+            final var directoryB = fileSystem.getPath("directoryA/directoryB");
+            final var fileA = fileSystem.getPath("fileA");
+            final var fileB = fileSystem.getPath("directoryA/fileB");
+            final var fileC = fileSystem.getPath("directoryA/directoryB/fileC");
+            Files.createDirectory(directoryA);
+            Files.createDirectory(directoryB);
+            Files.createFile(fileA);
+            Files.createFile(fileB);
+            Files.createFile(fileC);
 
-        final var directoryA = fileSystem.getPath("directoryA");
-        final var directoryB = fileSystem.getPath("directoryA/directoryB");
-        final var fileA = fileSystem.getPath("fileA");
-        final var fileB = fileSystem.getPath("directoryA/fileB");
-        final var fileC = fileSystem.getPath("directoryA/directoryB/fileC");
-        Files.createDirectory(directoryA);
-        Files.createDirectory(directoryB);
-        Files.createFile(fileA);
-        Files.createFile(fileB);
-        Files.createFile(fileC);
+            final var list = createPathList();
+            list.setRecursionMode(JFileChooser.FILES_ONLY);
+            list.addPath(directoryA);
+            list.addPath(directoryB);
+            list.addPath(fileA);
 
-        final var list = new JPathList();
-        list.setRecursionMode(JFileChooser.FILES_ONLY);
-        list.addPath(directoryA);
-        list.addPath(directoryB);
-        list.addPath(fileA);
-
-        Assertions.assertEquals(3, list.getPaths().size());
-        Assertions.assertTrue(list.getPaths().contains(fileA));
-        Assertions.assertTrue(list.getPaths().contains(fileB));
-        Assertions.assertTrue(list.getPaths().contains(fileC));
+            Assertions.assertEquals(3, getPathListLength(list, 3));
+            Assertions.assertTrue(list.getPaths().contains(fileA));
+            Assertions.assertTrue(list.getPaths().contains(fileB));
+            Assertions.assertTrue(list.getPaths().contains(fileC));
+        }
     }
 
     @Test
     public void canAddDirectoryPathWhenRecursionModeIsDirectoriesOnly() throws IOException {
-        final var fileSystem = Jimfs.newFileSystem();
+        try (final var fileSystem = Jimfs.newFileSystem()) {
+            final var directoryA = fileSystem.getPath("directoryA");
+            final var directoryB = fileSystem.getPath("directoryA/directoryB");
+            final var fileA = fileSystem.getPath("fileA");
+            final var fileB = fileSystem.getPath("directoryA/fileB");
+            final var fileC = fileSystem.getPath("directoryA/directoryB/fileC");
+            Files.createDirectory(directoryA);
+            Files.createDirectory(directoryB);
+            Files.createFile(fileA);
+            Files.createFile(fileB);
+            Files.createFile(fileC);
 
-        final var directoryA = fileSystem.getPath("directoryA");
-        final var directoryB = fileSystem.getPath("directoryA/directoryB");
-        final var fileA = fileSystem.getPath("fileA");
-        final var fileB = fileSystem.getPath("directoryA/fileB");
-        final var fileC = fileSystem.getPath("directoryA/directoryB/fileC");
-        Files.createDirectory(directoryA);
-        Files.createDirectory(directoryB);
-        Files.createFile(fileA);
-        Files.createFile(fileB);
-        Files.createFile(fileC);
+            final var list = createPathList();
+            list.setRecursionMode(JFileChooser.DIRECTORIES_ONLY);
+            list.addPath(directoryA);
+            list.addPath(directoryB);
+            list.addPath(fileA);
 
-        final var list = new JPathList();
-        list.setRecursionMode(JFileChooser.DIRECTORIES_ONLY);
-        list.addPath(directoryA);
-        list.addPath(directoryB);
-        list.addPath(fileA);
-
-        Assertions.assertEquals(2, list.getPaths().size());
-        Assertions.assertTrue(list.getPaths().contains(directoryA));
-        Assertions.assertTrue(list.getPaths().contains(directoryB));
+            Assertions.assertEquals(2, getPathListLength(list, 2));
+            Assertions.assertTrue(list.getPaths().contains(directoryA));
+            Assertions.assertTrue(list.getPaths().contains(directoryB));
+        }
     }
 
     @Test
     public void canAddDirectoryPathWhenRecursionModeIsFilesAndDirectories() throws IOException {
-        final var fileSystem = Jimfs.newFileSystem();
+        try (final var fileSystem = Jimfs.newFileSystem()) {
+            final var directoryA = fileSystem.getPath("directoryA");
+            final var directoryB = fileSystem.getPath("directoryA/directoryB");
+            final var fileA = fileSystem.getPath("fileA");
+            final var fileB = fileSystem.getPath("directoryA/fileB");
+            final var fileC = fileSystem.getPath("directoryA/directoryB/fileC");
+            Files.createDirectory(directoryA);
+            Files.createDirectory(directoryB);
+            Files.createFile(fileA);
+            Files.createFile(fileB);
+            Files.createFile(fileC);
 
-        final var directoryA = fileSystem.getPath("directoryA");
-        final var directoryB = fileSystem.getPath("directoryA/directoryB");
-        final var fileA = fileSystem.getPath("fileA");
-        final var fileB = fileSystem.getPath("directoryA/fileB");
-        final var fileC = fileSystem.getPath("directoryA/directoryB/fileC");
-        Files.createDirectory(directoryA);
-        Files.createDirectory(directoryB);
-        Files.createFile(fileA);
-        Files.createFile(fileB);
-        Files.createFile(fileC);
+            final var list = createPathList();
+            list.setRecursionMode(JFileChooser.FILES_AND_DIRECTORIES);
+            list.addPath(directoryA);
+            list.addPath(directoryB);
+            list.addPath(fileA);
 
-        final var list = new JPathList();
-        list.setRecursionMode(JFileChooser.FILES_AND_DIRECTORIES);
-        list.addPath(directoryA);
-        list.addPath(directoryB);
-        list.addPath(fileA);
-
-        Assertions.assertEquals(5, list.getPaths().size());
-        Assertions.assertTrue(list.getPaths().contains(directoryA));
-        Assertions.assertTrue(list.getPaths().contains(fileA));
-        Assertions.assertTrue(list.getPaths().contains(fileB));
-        Assertions.assertTrue(list.getPaths().contains(fileC));
+            Assertions.assertEquals(5, getPathListLength(list, 5));
+            Assertions.assertTrue(list.getPaths().contains(directoryA));
+            Assertions.assertTrue(list.getPaths().contains(fileA));
+            Assertions.assertTrue(list.getPaths().contains(fileB));
+            Assertions.assertTrue(list.getPaths().contains(fileC));
+        }
     }
 
     @Test
     public void cannotAddArrayOfPathsWhenArrayIsNull() {
-        final var list = new JPathList();
+        final var list = createPathList();
         Assertions.assertThrows(NullPointerException.class, () -> {
             list.addPaths((Path[]) null);
         });
@@ -168,33 +204,33 @@ public class JPathListTest {
 
     @Test
     public void canAddArrayOfPathsWhenArrayIsEmpty() throws IOException {
-        final var list = new JPathList();
+        final var list = createPathList();
         list.addPaths();
         Assertions.assertEquals(0, list.getPaths().size());
     }
 
     @Test
     public void canAddArrayOfPaths() throws IOException {
-        final var fileSystem = Jimfs.newFileSystem();
+        try (final var fileSystem = Jimfs.newFileSystem()) {
+            final var fileA = fileSystem.getPath("fileA");
+            final var fileB = fileSystem.getPath("fileB");
+            Files.createFile(fileA);
+            Files.createFile(fileB);
 
-        final var fileA = fileSystem.getPath("fileA");
-        final var fileB = fileSystem.getPath("fileB");
-        Files.createFile(fileA);
-        Files.createFile(fileB);
+            final var paths = new Path[]{fileA, fileB};
 
-        final var paths = new Path[] {fileA, fileB};
+            final var list = createPathList();
+            list.addPaths(paths);
 
-        final var list = new JPathList();
-        list.addPaths(paths);
-
-        Assertions.assertEquals(2, list.getPaths().size());
-        Assertions.assertTrue(list.getPaths().contains(fileA));
-        Assertions.assertTrue(list.getPaths().contains(fileB));
+            Assertions.assertEquals(2, getPathListLength(list, 2));
+            Assertions.assertTrue(list.getPaths().contains(fileA));
+            Assertions.assertTrue(list.getPaths().contains(fileB));
+        }
     }
 
     @Test
     public void cannotAddListOfPathsWhenArrayIsNull() {
-        final var list = new JPathList();
+        final var list = createPathList();
         Assertions.assertThrows(NullPointerException.class, () -> {
             list.addPaths((List<Path>) null);
         });
@@ -202,35 +238,35 @@ public class JPathListTest {
 
     @Test
     public void canAddListOfPathsWhenArrayIsEmpty() throws IOException {
-        final var list = new JPathList();
+        final var list = createPathList();
         list.addPaths(new ArrayList<>());
         Assertions.assertEquals(0, list.getPaths().size());
     }
 
     @Test
     public void canAddListOfPaths() throws IOException {
-        final var fileSystem = Jimfs.newFileSystem();
+        try (final var fileSystem = Jimfs.newFileSystem()) {
+            final var fileA = fileSystem.getPath("fileA");
+            final var fileB = fileSystem.getPath("fileB");
+            Files.createFile(fileA);
+            Files.createFile(fileB);
 
-        final var fileA = fileSystem.getPath("fileA");
-        final var fileB = fileSystem.getPath("fileB");
-        Files.createFile(fileA);
-        Files.createFile(fileB);
+            final var paths = new ArrayList<Path>();
+            paths.add(fileA);
+            paths.add(fileB);
 
-        final var paths = new ArrayList<Path>();
-        paths.add(fileA);
-        paths.add(fileB);
+            final var list = createPathList();
+            list.addPaths(paths);
 
-        final var list = new JPathList();
-        list.addPaths(paths);
-
-        Assertions.assertEquals(2, list.getPaths().size());
-        Assertions.assertTrue(list.getPaths().contains(fileA));
-        Assertions.assertTrue(list.getPaths().contains(fileB));
+            Assertions.assertEquals(2, getPathListLength(list, 2));
+            Assertions.assertTrue(list.getPaths().contains(fileA));
+            Assertions.assertTrue(list.getPaths().contains(fileB));
+        }
     }
 
     @Test
     public void cannotRemovePathWhenPathIsNull() {
-        final var list = new JPathList();
+        final var list = createPathList();
         Assertions.assertThrows(NullPointerException.class, () -> {
             list.removePath(null);
         });
@@ -238,20 +274,21 @@ public class JPathListTest {
 
     @Test
     public void canRemovePath() throws IOException {
-        final var fileSystem = Jimfs.newFileSystem();
-        final var path = fileSystem.getPath("test");
-        Files.createFile(path);
+        try (final var fileSystem = Jimfs.newFileSystem()) {
+            final var path = fileSystem.getPath("test");
+            Files.createFile(path);
 
-        final var list = new JPathList();
-        list.addPath(path);
-        list.removePath(path);
+            final var list = createPathList();
+            list.addPath(path);
+            list.removePath(path);
 
-        Assertions.assertEquals(0, list.getPaths().size());
+            Assertions.assertEquals(0, list.getPaths().size());
+        }
     }
 
     @Test
     public void cannotRemoveArrayOfPathsWhenArrayIsNull() {
-        final var list = new JPathList();
+        final var list = createPathList();
         Assertions.assertThrows(NullPointerException.class, () -> {
             list.removePaths((Path[]) null);
         });
@@ -259,32 +296,32 @@ public class JPathListTest {
 
     @Test
     public void canRemoveArrayOfPathsWhenArrayIsEmpty() {
-        final var list = new JPathList();
+        final var list = createPathList();
         list.removePaths();
         Assertions.assertEquals(0, list.getPaths().size());
     }
 
     @Test
     public void canRemoveArrayOfPaths() throws IOException {
-        final var fileSystem = Jimfs.newFileSystem();
+        try (final var fileSystem = Jimfs.newFileSystem()) {
+            final var fileA = fileSystem.getPath("fileA");
+            final var fileB = fileSystem.getPath("fileB");
+            Files.createFile(fileA);
+            Files.createFile(fileB);
 
-        final var fileA = fileSystem.getPath("fileA");
-        final var fileB = fileSystem.getPath("fileB");
-        Files.createFile(fileA);
-        Files.createFile(fileB);
+            final var paths = new Path[]{fileA, fileB};
 
-        final var paths = new Path[] {fileA, fileB};
+            final var list = createPathList();
+            list.addPaths(paths);
+            list.removePaths(paths);
 
-        final var list = new JPathList();
-        list.addPaths(paths);
-        list.removePaths(paths);
-
-        Assertions.assertEquals(0, list.getPaths().size());
+            Assertions.assertEquals(0, list.getPaths().size());
+        }
     }
 
     @Test
     public void cannotRemoveListOfPathsWhenArrayIsNull() {
-        final var list = new JPathList();
+        final var list = createPathList();
         Assertions.assertThrows(NullPointerException.class, () -> {
             list.removePaths((List<Path>) null);
         });
@@ -292,58 +329,58 @@ public class JPathListTest {
 
     @Test
     public void canRemoveListOfPathsWhenArrayIsEmpty() {
-        final var list = new JPathList();
+        final var list = createPathList();
         list.removePaths(new ArrayList<>());
         Assertions.assertEquals(0, list.getPaths().size());
     }
 
     @Test
     public void canRemoveListOfPaths() throws IOException {
-        final var fileSystem = Jimfs.newFileSystem();
+        try (final var fileSystem = Jimfs.newFileSystem()) {
+            final var fileA = fileSystem.getPath("fileA");
+            final var fileB = fileSystem.getPath("fileB");
+            Files.createFile(fileA);
+            Files.createFile(fileB);
 
-        final var fileA = fileSystem.getPath("fileA");
-        final var fileB = fileSystem.getPath("fileB");
-        Files.createFile(fileA);
-        Files.createFile(fileB);
+            final var paths = new ArrayList<Path>();
+            paths.add(fileA);
+            paths.add(fileB);
 
-        final var paths = new ArrayList<Path>();
-        paths.add(fileA);
-        paths.add(fileB);
+            final var list = createPathList();
+            list.addPaths(paths);
+            list.removePaths(paths);
 
-        final var list = new JPathList();
-        list.addPaths(paths);
-        list.removePaths(paths);
-
-        Assertions.assertEquals(0, list.getPaths().size());
+            Assertions.assertEquals(0, list.getPaths().size());
+        }
     }
 
     @Test
     public void canRemoveAllPaths() throws IOException {
-        final var fileSystem = Jimfs.newFileSystem();
+        try (final var fileSystem = Jimfs.newFileSystem()) {
+            final var fileA = fileSystem.getPath("fileA");
+            final var fileB = fileSystem.getPath("fileB");
+            Files.createFile(fileA);
+            Files.createFile(fileB);
 
-        final var fileA = fileSystem.getPath("fileA");
-        final var fileB = fileSystem.getPath("fileB");
-        Files.createFile(fileA);
-        Files.createFile(fileB);
+            final var list = createPathList();
+            list.addPath(fileA);
+            list.addPath(fileB);
+            list.removeAllPaths();
 
-        final var list = new JPathList();
-        list.addPath(fileA);
-        list.addPath(fileB);
-        list.removeAllPaths();
-
-        Assertions.assertEquals(0, list.getPaths().size());
+            Assertions.assertEquals(0, list.getPaths().size());
+        }
     }
 
     @Test
     public void canSetDragAndDropEnabled() {
-        final var list = new JPathList();
+        final var list = createPathList();
         list.setDragAndDropEnabled(false);
         Assertions.assertFalse(list.isDragAndDropEnabled());
     }
 
     @Test
     public void canSetRecursionMode() {
-        final var list = new JPathList();
+        final var list = createPathList();
         list.setRecursionMode(JFileChooser.FILES_ONLY);
         Assertions.assertEquals(JFileChooser.FILES_ONLY, list.getRecursionMode());
     }

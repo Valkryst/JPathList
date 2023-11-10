@@ -1,6 +1,8 @@
 package com.valkryst.JPathList;
 
 import javax.swing.*;
+import javax.swing.event.AncestorEvent;
+import javax.swing.event.AncestorListener;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.dnd.*;
 import java.io.File;
@@ -11,8 +13,13 @@ import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * <p>Represents a list of {@link Path} objects.</p>
@@ -25,18 +32,45 @@ import java.util.concurrent.atomic.AtomicInteger;
  * <p>Duplicate paths are not allowed.</p>
  */
 public class JPathList extends JList<Path> implements DropTargetListener {
+    private final Logger logger = Logger.getLogger("JPathList");
+
     /** The list of paths. */
     private final DefaultListModel<Path> pathsListModel = new DefaultListModel<>();
-
-    /** Whether drag-and-drop is enabled. */
-    private final AtomicBoolean dragAndDropEnabled = new AtomicBoolean(true);
 
     /** How to recurse directories, when using drag-and-drop. */
     private final AtomicInteger recursionMode = new AtomicInteger(-1);
 
+    /** Service used to add paths to the list. */
+    private ExecutorService additionService;
+
+    /** Shutdown hook for the addition service. */
+    private Thread additionServiceShutdownHook;
+
+    /** Aet of paths to be added to the list by the addition service. */
+    private final LinkedBlockingQueue<Path> pathsToAdd = new LinkedBlockingQueue<>();
+
+    /** Constructs a new {@code JPathList}. */
     public JPathList() {
         super.setModel(pathsListModel);
-        this.setDropTarget(new DropTarget(this, this));
+
+        this.setDragAndDropEnabled(true);
+
+        this.addAncestorListener(new AncestorListener() {
+            @Override
+            public void ancestorAdded(final AncestorEvent event) {
+                startAdditionService();
+                addShutdownHook();
+            }
+
+            @Override
+            public void ancestorRemoved(final AncestorEvent event) {
+                removeShutdownHook();
+                stopAdditionService();
+            }
+
+            @Override
+            public void ancestorMoved(final AncestorEvent event) {}
+        });
     }
 
     @Override
@@ -54,7 +88,7 @@ public class JPathList extends JList<Path> implements DropTargetListener {
         try {
             files = (List<File>) transferable.getTransferData(DataFlavor.javaFileListFlavor);
         } catch (final Exception e) {
-            e.printStackTrace();
+            logger.log(Level.SEVERE, "An error occurred when retrieving the list of files from the transferable.", e);
             return;
         }
 
@@ -62,7 +96,7 @@ public class JPathList extends JList<Path> implements DropTargetListener {
             try {
                 this.addPath(file.toPath());
             } catch (final IOException e) {
-                e.printStackTrace();
+                logger.log(Level.SEVERE, "An I/O error occurred when adding a path to the list.", e);
             }
         }
     }
@@ -90,12 +124,6 @@ public class JPathList extends JList<Path> implements DropTargetListener {
     public void addPath(final Path path) throws IOException {
         Objects.requireNonNull(path);
 
-        synchronized (pathsListModel) {
-            if (pathsListModel.contains(path)) {
-                return;
-            }
-        }
-
         if (Files.notExists(path)) {
             throw new FileNotFoundException("The file '%s' does not exist".formatted(path));
         }
@@ -110,9 +138,7 @@ public class JPathList extends JList<Path> implements DropTargetListener {
                 return;
             }
 
-            synchronized (pathsListModel) {
-                pathsListModel.addElement(path);
-            }
+            pathsToAdd.add(path);
             return;
         }
 
@@ -121,9 +147,7 @@ public class JPathList extends JList<Path> implements DropTargetListener {
         }
 
         if (recursionMode < JFileChooser.FILES_ONLY || recursionMode > JFileChooser.FILES_AND_DIRECTORIES) {
-            synchronized (pathsListModel) {
-                pathsListModel.addElement(path);
-            }
+            pathsToAdd.add(path);
             return;
         }
 
@@ -141,9 +165,7 @@ public class JPathList extends JList<Path> implements DropTargetListener {
 
         // In these cases, we want to add the directory itself to the list.
         if (recursionMode == JFileChooser.DIRECTORIES_ONLY || recursionMode == JFileChooser.FILES_AND_DIRECTORIES) {
-            synchronized (pathsListModel) {
-                pathsListModel.addElement(path);
-            }
+            pathsToAdd.add(path);
         }
 
         this.addPaths(pathsList);
@@ -209,7 +231,9 @@ public class JPathList extends JList<Path> implements DropTargetListener {
      * @throws NullPointerException If {@code paths} is {@code null}.
      */
     public void removePaths(final Path... paths) {
+        System.out.println("Removing paths from the list.");
         Objects.requireNonNull(paths);
+        System.out.println("Paths are not null.");
 
         for (final var path : paths) {
             this.removePath(path);
@@ -228,6 +252,85 @@ public class JPathList extends JList<Path> implements DropTargetListener {
         for (final var path : paths) {
             this.removePath(path);
         }
+    }
+
+    /**
+     * <p>Constructs a new shutdown hook for the addition service and adds it to the runtime.</p>
+     *
+     * <p>If a shutdown hook already exists, then this method does nothing.</p>
+     */
+    private void addShutdownHook() {
+        if (additionServiceShutdownHook != null) {
+            return;
+        }
+
+        additionServiceShutdownHook = new Thread(() -> {
+            additionService.shutdownNow();
+
+            try {
+                additionService.awaitTermination(1, TimeUnit.SECONDS);
+            } catch (final InterruptedException e) {
+                logger.log(Level.SEVERE, "An error occurred when shutting down the addition service.", e);
+            }
+
+            additionService.close();
+        });
+
+        Runtime.getRuntime().addShutdownHook(additionServiceShutdownHook);
+    }
+
+    /** Removes the shutdown hook for the addition service from the runtime. */
+    private void removeShutdownHook() {
+        Objects.requireNonNull(additionServiceShutdownHook);
+        Runtime.getRuntime().removeShutdownHook(additionServiceShutdownHook);
+        additionServiceShutdownHook = null;
+    }
+
+
+    /**
+     * <p>Starts the addition service.</p>
+     *
+     * <p>If the addition service is already running, then this method does nothing.</p>
+     */
+    private void startAdditionService() {
+        if (additionService != null) {
+            return;
+        }
+
+        additionService = Executors.newSingleThreadExecutor();
+        additionService.execute(() -> {
+            while (!Thread.interrupted()) {
+                try {
+                    final var path = pathsToAdd.take();
+
+                    synchronized (pathsListModel) {
+                        if (pathsListModel.contains(path)) {
+                            continue;
+                        }
+
+                        pathsListModel.addElement(path);
+                    }
+                } catch (final InterruptedException e) {
+                    logger.log(Level.INFO, "The addition service has been interrupted.", e);
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+        });
+    }
+
+    /**
+     * <p>Stops the addition service.</p>
+     *
+     * <p>If the addition service is already stopped, then this method does nothing.</p>
+     */
+    private void stopAdditionService() {
+        if (additionService == null) {
+            return;
+        }
+
+        additionService.shutdownNow();
+        additionService = null;
     }
 
     /**
@@ -252,7 +355,7 @@ public class JPathList extends JList<Path> implements DropTargetListener {
      * @return Whether drag-and-drop is enabled.
      */
     public boolean isDragAndDropEnabled() {
-        return dragAndDropEnabled.get();
+        return this.getDropTarget() != null;
     }
 
     /**
@@ -270,7 +373,11 @@ public class JPathList extends JList<Path> implements DropTargetListener {
      * @param isEnabled Whether the feature is enabled.
      */
     public void setDragAndDropEnabled(final boolean isEnabled) {
-        dragAndDropEnabled.set(isEnabled);
+        if (isEnabled) {
+            this.setDropTarget(new DropTarget(this, this));
+        } else {
+            this.setDropTarget(null);
+        }
     }
 
     /**
