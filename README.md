@@ -86,7 +86,7 @@ public class Driver {
     public static void main(final String[] args) {
         SwingUtilities.invokeLater(() -> {
             final var fileList = new JPathList();
-            fileList.setRecursionMode(RecursionMode.FILES_AND_DIRECTORIES);
+            fileList.setRecursionMode(JFileChooser.FILES_AND_DIRECTORIES);
 
             final var frame = new JFrame("JPathList Example");
             frame.getContentPane().add(new JScrollPane(fileList));
@@ -100,3 +100,11 @@ public class Driver {
     }
 }
 ```
+
+The allowed recursion modes are:
+
+* `JFileChooser.FILES_ONLY`
+* `JFileChooser.DIRECTORIES_ONLY`
+* `JFileChooser.FILES_AND_DIRECTORIES`
+
+Any other values are considered `NONE` and will prevent any files or directories from being added to the list.

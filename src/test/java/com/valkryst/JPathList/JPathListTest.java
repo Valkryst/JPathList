@@ -4,6 +4,7 @@ import com.google.common.jimfs.Jimfs;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+import javax.swing.*;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -18,7 +19,7 @@ public class JPathListTest {
         final var list = new JPathList();
         Assertions.assertEquals(0, list.getPaths().size());
         Assertions.assertTrue(list.isDragAndDropEnabled());
-        Assertions.assertEquals(RecursionMode.NONE, list.getRecursionMode());
+        Assertions.assertEquals(-1, list.getRecursionMode());
     }
 
     @Test
@@ -92,7 +93,7 @@ public class JPathListTest {
         Files.createFile(fileC);
 
         final var list = new JPathList();
-        list.setRecursionMode(RecursionMode.FILES_ONLY);
+        list.setRecursionMode(JFileChooser.FILES_ONLY);
         list.addPath(directoryA);
         list.addPath(directoryB);
         list.addPath(fileA);
@@ -119,7 +120,7 @@ public class JPathListTest {
         Files.createFile(fileC);
 
         final var list = new JPathList();
-        list.setRecursionMode(RecursionMode.DIRECTORIES_ONLY);
+        list.setRecursionMode(JFileChooser.DIRECTORIES_ONLY);
         list.addPath(directoryA);
         list.addPath(directoryB);
         list.addPath(fileA);
@@ -145,7 +146,7 @@ public class JPathListTest {
         Files.createFile(fileC);
 
         final var list = new JPathList();
-        list.setRecursionMode(RecursionMode.FILES_AND_DIRECTORIES);
+        list.setRecursionMode(JFileChooser.FILES_AND_DIRECTORIES);
         list.addPath(directoryA);
         list.addPath(directoryB);
         list.addPath(fileA);
@@ -343,7 +344,7 @@ public class JPathListTest {
     @Test
     public void canSetRecursionMode() {
         final var list = new JPathList();
-        list.setRecursionMode(RecursionMode.FILES_ONLY);
-        Assertions.assertEquals(RecursionMode.FILES_ONLY, list.getRecursionMode());
+        list.setRecursionMode(JFileChooser.FILES_ONLY);
+        Assertions.assertEquals(JFileChooser.FILES_ONLY, list.getRecursionMode());
     }
 }

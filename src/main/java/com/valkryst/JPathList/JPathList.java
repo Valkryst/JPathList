@@ -12,7 +12,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * <p>Represents a list of {@link Path} objects.</p>
@@ -32,7 +32,7 @@ public class JPathList extends JList<Path> implements DropTargetListener {
     private final AtomicBoolean dragAndDropEnabled = new AtomicBoolean(true);
 
     /** How to recurse directories, when using drag-and-drop. */
-    private final AtomicReference<com.valkryst.JPathList.RecursionMode> recursionMode = new AtomicReference<>(com.valkryst.JPathList.RecursionMode.NONE);
+    private final AtomicInteger recursionMode = new AtomicInteger(-1);
 
     public JPathList() {
         super.setModel(pathsListModel);
@@ -106,7 +106,7 @@ public class JPathList extends JList<Path> implements DropTargetListener {
 
         final var recursionMode = this.recursionMode.get();
         if (Files.isRegularFile(path)) {
-            if (recursionMode == com.valkryst.JPathList.RecursionMode.DIRECTORIES_ONLY) {
+            if (recursionMode == JFileChooser.DIRECTORIES_ONLY) {
                 return;
             }
 
@@ -120,7 +120,7 @@ public class JPathList extends JList<Path> implements DropTargetListener {
             throw new IllegalStateException("The file '%s' is neither a regular file nor a directory.".formatted(path));
         }
 
-        if (recursionMode == com.valkryst.JPathList.RecursionMode.NONE) {
+        if (recursionMode < JFileChooser.FILES_ONLY || recursionMode > JFileChooser.FILES_AND_DIRECTORIES) {
             synchronized (pathsListModel) {
                 pathsListModel.addElement(path);
             }
@@ -129,9 +129,9 @@ public class JPathList extends JList<Path> implements DropTargetListener {
 
         final var pathsStream = Files.list(path);
         final var pathsList = pathsStream.filter(p -> switch (recursionMode) {
-            case FILES_ONLY -> Files.isRegularFile(p);
-            case DIRECTORIES_ONLY -> Files.isDirectory(p);
-            case FILES_AND_DIRECTORIES -> true;
+            case JFileChooser.FILES_ONLY -> Files.isRegularFile(p);
+            case JFileChooser.DIRECTORIES_ONLY -> Files.isDirectory(p);
+            case JFileChooser.FILES_AND_DIRECTORIES -> true;
             default -> {
                 System.err.println("Unknown recursion mode: " + recursionMode);
                 yield false;
@@ -140,7 +140,7 @@ public class JPathList extends JList<Path> implements DropTargetListener {
         pathsStream.close();
 
         // In these cases, we want to add the directory itself to the list.
-        if (recursionMode == com.valkryst.JPathList.RecursionMode.DIRECTORIES_ONLY || recursionMode == com.valkryst.JPathList.RecursionMode.FILES_AND_DIRECTORIES) {
+        if (recursionMode == JFileChooser.DIRECTORIES_ONLY || recursionMode == JFileChooser.FILES_AND_DIRECTORIES) {
             synchronized (pathsListModel) {
                 pathsListModel.addElement(path);
             }
@@ -260,7 +260,7 @@ public class JPathList extends JList<Path> implements DropTargetListener {
      *
      * @return The recursion mode.
      */
-    public com.valkryst.JPathList.RecursionMode getRecursionMode() {
+    public int getRecursionMode() {
         return recursionMode.get();
     }
 
@@ -274,11 +274,32 @@ public class JPathList extends JList<Path> implements DropTargetListener {
     }
 
     /**
-     * Sets how to recurse directories, when using drag-and-drop.
+     * <p>Sets how to recurse directories, when using drag-and-drop.</p>
+     *
+     * <p>Any value outside of the following are considered "NONE":</p>
+     *
+     * <ul>
+     *     <li>{@link JFileChooser#FILES_ONLY}</li>
+     *     <li>{@link JFileChooser#DIRECTORIES_ONLY}</li>
+     *     <li>{@link JFileChooser#FILES_AND_DIRECTORIES}</li>
+     * </ul
      *
      * @param mode The new mode.
      */
-    public void setRecursionMode(final com.valkryst.JPathList.RecursionMode mode) {
-        this.recursionMode.set(mode);
+    public void setRecursionMode(final int mode) {
+        final int[] allowedModes = {
+            JFileChooser.FILES_ONLY,
+            JFileChooser.DIRECTORIES_ONLY,
+            JFileChooser.FILES_AND_DIRECTORIES
+        };
+
+        for (final var allowedMode : allowedModes) {
+            if (mode == allowedMode) {
+                this.recursionMode.set(mode);
+                return;
+            }
+        }
+
+        recursionMode.set(-1);
     }
 }
