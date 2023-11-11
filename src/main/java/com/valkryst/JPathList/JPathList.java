@@ -273,6 +273,12 @@ public class JPathList extends JList<Path> implements DropTargetListener {
         super.setDropTarget(isEnabled ? new DropTarget(this, this) : null);
     }
 
+    @Override
+    public void setEnabled(boolean enabled) {
+        super.setEnabled(enabled);
+        setDragAndDropEnabled(enabled && isDragAndDropEnabled());
+    }
+
     /**
      * <p>Sets how to recurse directories, when using drag-and-drop.</p>
      *
