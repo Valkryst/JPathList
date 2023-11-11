@@ -12,6 +12,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * <p>Represents a list of {@link Path} objects.</p>
@@ -24,6 +26,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  * <p>Duplicate paths are not allowed.</p>
  */
 public class JPathList extends JList<Path> implements DropTargetListener {
+    private final Logger logger = Logger.getLogger(this.getClass().getName());
+
     /** The list of paths. */
     private final DefaultListModel<Path> pathsListModel = new DefaultListModel<>();
 
@@ -50,7 +54,7 @@ public class JPathList extends JList<Path> implements DropTargetListener {
         try {
             files = (List<File>) transferable.getTransferData(DataFlavor.javaFileListFlavor);
         } catch (final Exception e) {
-            e.printStackTrace();
+            logger.log(Level.SEVERE, "Failed to retrieve dropped files.", e);
             return;
         }
 
@@ -58,7 +62,7 @@ public class JPathList extends JList<Path> implements DropTargetListener {
             try {
                 this.addPath(file.toPath());
             } catch (final IOException e) {
-                e.printStackTrace();
+                logger.log(Level.WARNING, "Failed to add the path '%s' to the list.".formatted(file), e);
             }
         }
     }
@@ -129,7 +133,7 @@ public class JPathList extends JList<Path> implements DropTargetListener {
             case JFileChooser.DIRECTORIES_ONLY -> Files.isDirectory(p);
             case JFileChooser.FILES_AND_DIRECTORIES -> true;
             default -> {
-                System.err.println("Unknown recursion mode: " + recursionMode);
+                logger.log(Level.SEVERE, "Unknown recursion mode: " + recursionMode);
                 yield false;
             }
         }).toList();
