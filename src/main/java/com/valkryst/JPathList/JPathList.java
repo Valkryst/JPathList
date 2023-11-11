@@ -11,7 +11,6 @@ import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -28,15 +27,12 @@ public class JPathList extends JList<Path> implements DropTargetListener {
     /** The list of paths. */
     private final DefaultListModel<Path> pathsListModel = new DefaultListModel<>();
 
-    /** Whether drag-and-drop is enabled. */
-    private final AtomicBoolean dragAndDropEnabled = new AtomicBoolean(true);
-
     /** How to recurse directories, when using drag-and-drop. */
     private final AtomicInteger recursionMode = new AtomicInteger(-1);
 
     public JPathList() {
         super.setModel(pathsListModel);
-        this.setDropTarget(new DropTarget(this, this));
+        setDragAndDropEnabled(true);
     }
 
     @Override
@@ -252,7 +248,7 @@ public class JPathList extends JList<Path> implements DropTargetListener {
      * @return Whether drag-and-drop is enabled.
      */
     public boolean isDragAndDropEnabled() {
-        return dragAndDropEnabled.get();
+        return this.getDropTarget() != null;
     }
 
     /**
@@ -270,7 +266,7 @@ public class JPathList extends JList<Path> implements DropTargetListener {
      * @param isEnabled Whether the feature is enabled.
      */
     public void setDragAndDropEnabled(final boolean isEnabled) {
-        dragAndDropEnabled.set(isEnabled);
+        super.setDropTarget(isEnabled ? new DropTarget(this, this) : null);
     }
 
     /**

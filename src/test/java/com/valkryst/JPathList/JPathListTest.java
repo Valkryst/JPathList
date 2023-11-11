@@ -337,8 +337,11 @@ public class JPathListTest {
     @Test
     public void canSetDragAndDropEnabled() {
         final var list = new JPathList();
+        Assertions.assertNotNull(list.isDragAndDropEnabled());
+
         list.setDragAndDropEnabled(false);
         Assertions.assertFalse(list.isDragAndDropEnabled());
+        Assertions.assertNull(list.getDropTarget());
     }
 
     @Test
