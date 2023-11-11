@@ -342,6 +342,30 @@ public class JPathListTest {
     }
 
     @Test
+    public void canSetEnabled() {
+        final boolean[][] testCases = {
+            // isEnabled, isDragAndDropEnabled, expected
+            {true, true, true},
+            {true, false, false},
+            {false, true, false},
+            {false, false, false}
+        };
+
+        final var list = new JPathList();
+
+        for (final var testCase : testCases) {
+            list.setDragAndDropEnabled(testCase[1]);
+            list.setEnabled(testCase[0]);
+
+            if (testCase[2]) {
+                Assertions.assertNotNull(list.getDropTarget());
+            } else {
+                Assertions.assertNull(list.getDropTarget());
+            }
+        }
+    }
+
+    @Test
     public void canSetRecursionMode() {
         final var list = new JPathList();
         list.setRecursionMode(JFileChooser.FILES_ONLY);
