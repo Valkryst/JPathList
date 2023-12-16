@@ -1,6 +1,7 @@
 package com.valkryst.JPathList;
 
 import javax.swing.*;
+import javax.swing.event.ChangeListener;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.dnd.*;
 import java.io.File;
@@ -38,6 +39,9 @@ public class JPathList extends JList<Path> implements DropTargetListener {
     /** How to recurse directories, when using drag-and-drop. */
     private final AtomicInteger recursionMode = new AtomicInteger(-1);
 
+    /** Listeners to be notified when the progress changes. */
+    private final List<ChangeListener> progressChangeListeners = Collections.synchronizedList(Collections.emptyList());
+
     public JPathList() {
         super.setModel(pathsListModel);
         this.setDropTarget(new DropTarget(this, this));
@@ -62,11 +66,17 @@ public class JPathList extends JList<Path> implements DropTargetListener {
             return;
         }
 
-        for (final var file : files) {
+        this.fireProgressChangeEvent(0.0);
+
+        for (int i = 0 ; i < files.size() ; i++) {
+            final var file = files.get(i);
+
             try {
                 this.addPath(file.toPath());
             } catch (final IOException e) {
                 logger.log(Level.WARNING, "Failed to add the path '%s' to the list.".formatted(file), e);
+            } finally {
+                this.fireProgressChangeEvent(((double) i) / files.size() * 100.0);
             }
         }
     }
@@ -164,8 +174,11 @@ public class JPathList extends JList<Path> implements DropTargetListener {
     public void addPaths(final Path... paths) throws IOException {
         Objects.requireNonNull(paths);
 
-        for (final var path : paths) {
-            this.addPath(path);
+        this.fireProgressChangeEvent(0.0);
+
+        for (int i = 0 ; i < paths.length ; i++) {
+            this.addPath(paths[i]);
+            this.fireProgressChangeEvent(((double) i) / paths.length * 100.0);
         }
     }
 
@@ -180,8 +193,36 @@ public class JPathList extends JList<Path> implements DropTargetListener {
     public void addPaths(final List<Path> paths) throws IOException {
         Objects.requireNonNull(paths);
 
-        for (final var path : paths) {
-            this.addPath(path);
+        this.fireProgressChangeEvent(0.0);
+
+        final int totalPaths = paths.size();
+        for (int i = 0 ; i < totalPaths ; i++) {
+            this.addPath(paths.get(i));
+            this.fireProgressChangeEvent(((double) i) / totalPaths * 100.0);
+        }
+    }
+
+    /**
+     * Adds a listener to the set of progress change listeners.
+     *
+     * @param listener The listener.
+     * @throws NullPointerException If {@code listener} is {@code null}.
+     */
+    public void addProgressChangeListener(final ChangeListener listener) {
+        Objects.requireNonNull(listener);
+        progressChangeListeners.add(listener);
+    }
+
+    /**
+     * Fires a {@link ProgressChangeEvent} to all progress change listeners.
+     *
+     * @param progress Progress of the current operation.
+     */
+    private void fireProgressChangeEvent(final double progress) {
+        final var event = new ProgressChangeEvent(this, 0.0);
+
+        for (final var listener : progressChangeListeners) {
+            listener.stateChanged(event);
         }
     }
 
@@ -215,8 +256,11 @@ public class JPathList extends JList<Path> implements DropTargetListener {
     public void removePaths(final Path... paths) {
         Objects.requireNonNull(paths);
 
-        for (final var path : paths) {
-            this.removePath(path);
+        this.fireProgressChangeEvent(0.0);
+
+        for (int i = 0 ; i < paths.length ; i++) {
+            this.removePath(paths[i]);
+            this.fireProgressChangeEvent(((double) i) / paths.length * 100.0);
         }
     }
 
@@ -229,9 +273,22 @@ public class JPathList extends JList<Path> implements DropTargetListener {
     public void removePaths(final List<Path> paths) {
         Objects.requireNonNull(paths);
 
-        for (final var path : paths) {
-            this.removePath(path);
+        final int totalPaths = paths.size();
+        for (int i = 0 ; i < totalPaths ; i++) {
+            this.removePath(paths.get(i));
+            this.fireProgressChangeEvent(((double) i) / totalPaths * 100.0);
         }
+    }
+
+    /**
+     * Removes a listener from the set of progress change listeners.
+     *
+     * @param listener The listener.
+     * @throws NullPointerException If {@code listener} is {@code null}.
+     */
+    public void removeProgressChangeListener(final ChangeListener listener) {
+        Objects.requireNonNull(listener);
+        progressChangeListeners.remove(listener);
     }
 
     /**
