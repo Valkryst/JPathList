@@ -177,9 +177,13 @@ public class JPathList extends JList<Path> implements DropTargetListener {
 
         this.fireProgressChangeEvent(0.0);
 
-        for (int i = 0 ; i < paths.length ; i++) {
-            this.addPath(paths[i]);
-            this.fireProgressChangeEvent(((double) i) / paths.length * 100.0);
+        try {
+            for (int i = 0 ; i < paths.length ; i++) {
+                this.addPath(paths[i]);
+                this.fireProgressChangeEvent(((double) i) / paths.length * 100.0);
+            }
+        } finally {
+            this.fireProgressChangeEvent(100.0);
         }
     }
 
@@ -196,10 +200,14 @@ public class JPathList extends JList<Path> implements DropTargetListener {
 
         this.fireProgressChangeEvent(0.0);
 
-        final int totalPaths = paths.size();
-        for (int i = 0 ; i < totalPaths ; i++) {
-            this.addPath(paths.get(i));
-            this.fireProgressChangeEvent(((double) i) / totalPaths * 100.0);
+        try {
+            final int totalPaths = paths.size();
+            for (int i = 0; i < totalPaths; i++) {
+                this.addPath(paths.get(i));
+                this.fireProgressChangeEvent(((double) i) / totalPaths * 100.0);
+            }
+        } finally {
+            this.fireProgressChangeEvent(100.0);
         }
     }
 
@@ -259,9 +267,13 @@ public class JPathList extends JList<Path> implements DropTargetListener {
 
         this.fireProgressChangeEvent(0.0);
 
-        for (int i = 0 ; i < paths.length ; i++) {
-            this.removePath(paths[i]);
-            this.fireProgressChangeEvent(((double) i) / paths.length * 100.0);
+        try {
+            for (int i = 0; i < paths.length; i++) {
+                this.removePath(paths[i]);
+                this.fireProgressChangeEvent(((double) i) / paths.length * 100.0);
+            }
+        } finally {
+            this.fireProgressChangeEvent(100.0);
         }
     }
 
@@ -274,10 +286,14 @@ public class JPathList extends JList<Path> implements DropTargetListener {
     public void removePaths(final List<Path> paths) {
         Objects.requireNonNull(paths);
 
-        final int totalPaths = paths.size();
-        for (int i = 0 ; i < totalPaths ; i++) {
-            this.removePath(paths.get(i));
-            this.fireProgressChangeEvent(((double) i) / totalPaths * 100.0);
+        try {
+            final int totalPaths = paths.size();
+            for (int i = 0; i < totalPaths; i++) {
+                this.removePath(paths.get(i));
+                this.fireProgressChangeEvent(((double) i) / totalPaths * 100.0);
+            }
+        } finally {
+            this.fireProgressChangeEvent(100.0);
         }
     }
 
