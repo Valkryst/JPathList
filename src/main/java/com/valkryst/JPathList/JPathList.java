@@ -12,6 +12,7 @@ import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
@@ -40,7 +41,7 @@ public class JPathList extends JList<Path> implements DropTargetListener {
     private final AtomicInteger recursionMode = new AtomicInteger(-1);
 
     /** Listeners to be notified when the progress changes. */
-    private final List<ChangeListener> progressChangeListeners = Collections.synchronizedList(Collections.emptyList());
+    private final List<ChangeListener> progressChangeListeners = new CopyOnWriteArrayList<>();
 
     public JPathList() {
         super.setModel(pathsListModel);
